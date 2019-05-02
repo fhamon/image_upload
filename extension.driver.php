@@ -29,10 +29,17 @@
 					'min_height' => 'int(11)',
 					'max_width' => 'int(11)',
 					'max_height' => 'int(11)',
+					'viewport_width' => 'int(11)',
+					'viewport_height' => 'int(11)',
 					'resize' => [
 						'type' => 'enum',
 						'values' => ['yes','no'],
 						'default' => 'yes'
+					],
+					'editor' => [
+						'type' => 'enum',
+						'values' => ['yes','no'],
+						'default' => 'no'
 					],
 				])
 				->keys([

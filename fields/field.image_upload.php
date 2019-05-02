@@ -121,6 +121,44 @@
 		/*  Settings  */
 		/*------------------------------------------------------------------------------------------------*/
 
+		public function createTable()
+		{
+			return Symphony::Database()
+				->create('tbl_entries_data_' . General::intval($this->get('id')))
+				->ifNotExists()
+				->fields([
+					'id' => [
+						'type' => 'int(11)',
+						'auto' => true,
+					],
+					'entry_id' => 'int(11)',
+					'file' => [
+						'type' => 'varchar(255)',
+						'null' => true,
+					],
+					'size' => [
+						'type' => 'int(11)',
+						'null' => true,
+					],
+					'mimetype' => [
+						'type' => 'varchar(100)',
+						'null' => true,
+					],
+					'meta' => [
+						'type' => 'text',
+						'null' => true,
+					],
+				])
+				->keys([
+					'id' => 'primary',
+					'entry_id' => 'unique',
+					'file' => 'key',
+					'mimetype' => 'key',
+				])
+				->execute()
+				->success();
+		}
+
 		public function findDefaults(array &$settings)
 		{
 			if (!isset($settings['unique'])) {
@@ -135,6 +173,14 @@
 				$settings['min_height'] = 0;
 			}
 
+			if (!isset($settings['viewport_width'])) {
+				$settings['viewport_width'] = 0;
+			}
+
+			if (!isset($settings['viewport_height'])) {
+				$settings['viewport_height'] = 0;
+			}
+
 			if (!isset($settings['max_width'])) {
 				$settings['max_width'] = 1920;
 			}
@@ -145,6 +191,10 @@
 
 			if (!isset($settings['resize'])) {
 				$settings['resize'] = 'no';
+			}
+
+			if (!isset($settings['editor'])) {
+				$settings['editor'] = 'no';
 			}
 		}
 
@@ -188,6 +238,30 @@
 
 			$this->addUniqueCheckbox($div);
 			$this->addResizeCheckbox($div);
+
+			$wrapper->appendChild($div);
+
+			$div = new XMLElement('div', null, array('class' => 'two columns'));
+
+			$this->addEditorCheckbox($div);
+
+			$wrapper->appendChild($div);
+
+			$div = new XMLElement('div', null, array('class' => 'two columns'));
+
+			$this->addDimensionInput(
+				$div,
+				__('Viewport width (px)'),
+				'viewport_width',
+				__('If empty or 0, no forced viewport will be set on the editor.')
+			);
+
+			$this->addDimensionInput(
+				$div,
+				__('Viewport height (px)'),
+				'viewport_height',
+				__('If empty or 0, no forced viewport will be set on the editor.')
+			);
 
 			$wrapper->appendChild($div);
 		}
@@ -271,6 +345,17 @@
 			$wrapper->appendChild($label);
 		}
 
+		protected function addEditorCheckbox(XMLElement &$wrapper)
+		{
+			$label = Widget::Label(null, null, 'column');
+			$input = Widget::Input("fields[{$this->get('sortorder')}][editor]", 'yes', 'checkbox');
+			if ($this->get('editor') == 'yes') {
+				$input->setAttribute('checked', 'checked');
+			}
+			$label->setValue(__('%s Enable the editor', array($input->generate())));
+			$wrapper->appendChild($label);
+		}
+
 		public function commit()
 		{
 			if (!Field::commit()) {
@@ -285,15 +370,18 @@
 
 			$settings = array();
 
-			$settings['field_id']    = $id;
-			$settings['destination'] = $this->get('destination');
-			$settings['validator']   = ($settings['validator'] == 'custom' ? null : $this->get('validator'));
-			$settings['unique']      = $this->get('unique');
-			$settings['min_width']   = (int)$this->get('min_width');
-			$settings['min_height']  = (int)$this->get('min_height');
-			$settings['max_width']   = (int)$this->get('max_width');
-			$settings['max_height']  = (int)$this->get('max_height');
-			$settings['resize']      = $this->get('resize') == 'yes' ? 'yes' : 'no';
+			$settings['field_id']        = $id;
+			$settings['destination']     = $this->get('destination');
+			$settings['validator']       = ($settings['validator'] == 'custom' ? null : $this->get('validator'));
+			$settings['unique']          = $this->get('unique');
+			$settings['min_width']       = (int)$this->get('min_width');
+			$settings['min_height']      = (int)$this->get('min_height');
+			$settings['max_width']       = (int)$this->get('max_width');
+			$settings['max_height']      = (int)$this->get('max_height');
+			$settings['viewport_width']  = (int)$this->get('viewport_width');
+			$settings['viewport_height'] = (int)$this->get('viewport_height');
+			$settings['resize']          = $this->get('resize') == 'yes' ? 'yes' : 'no';
+			$settings['editor']          = $this->get('editor') == 'yes' ? 'yes' : 'no';
 
 			return FieldManager::saveSettings($id, $settings);
 		}
