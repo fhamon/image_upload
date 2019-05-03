@@ -77,6 +77,7 @@
 		public static function getMetaInfo($file, $type, $extra = null)
 		{
 			$metas = parent::getMetaInfo($file, $type);
+
 			if (self::isSvg($type)) {
 				$svg = @simplexml_load_file($file);
 				if (is_object($svg)) {
@@ -514,7 +515,7 @@
 					!static::isSvg($result['mimetype'])) {
 
 					if ((!empty($max_width) && ($max_width > 0)) || (!empty($max_height) && ($max_height > 0))) {
-						if (is_file($file = WORKSPACE.$result['file'])) {
+						if (is_file($file = WORKSPACE.'/'.$result['file'])) {
 							$dimensions = $this->figureDimensions(static::getMetaInfo($file, $result['mimetype'], $data['meta']));
 							if ($dimensions['proceed']) {
 								if (self::resize($file, $dimensions['width'], $dimensions['height'], $result['mimetype'])) {
@@ -525,7 +526,7 @@
 					}
 				}
 
-				$result['meta'] = serialize(static::getMetaInfo($file, $result['mimetype'], $data['meta']));
+				$result['meta'] = serialize(static::getMetaInfo(WORKSPACE.'/'.$result['file'], $result['mimetype'], $data['meta']));
 			}
 
 			// new file in Symphony
@@ -646,6 +647,46 @@
 		/*------------------------------------------------------------------------------------------------*/
 		/*  Output  */
 		/*------------------------------------------------------------------------------------------------*/
+
+		public function appendFormattedElement(XMLElement &$wrapper, $data, $encode = false, $mode = null, $entry_id = null)
+		{
+			// It is possible an array of null data will be passed in. Check for this.
+			if (!is_array($data) || !isset($data['file']) || is_null($data['file'])) {
+				return;
+			}
+
+			$file = $this->getFilePath($data['file']);
+			$filesize = (file_exists($file) && is_readable($file)) ? filesize($file) : null;
+			$item = new XMLElement($this->get('element_name'));
+			$item->setAttributeArray(array(
+				'size' =>   !is_null($filesize) ? General::formatFilesize($filesize) : 'unknown',
+				'bytes' =>  !is_null($filesize) ? $filesize : 'unknown',
+				'path' =>   General::sanitize(
+					str_replace(WORKSPACE, null, dirname($file))
+				),
+				'type' =>   $data['mimetype']
+			));
+
+			$item->appendChild(new XMLElement('filename', General::sanitize(basename($file))));
+
+			$metas = unserialize($data['meta']);
+
+			if (is_array($metas) && !empty($metas)) {
+				$meta = new XMLElement('meta', null);
+
+				foreach ($metas as $key => $value) {
+					if (is_array($value) && !empty($value)) {
+						$meta->appendChild(new XMLElement($key, null, $value));
+					} else {
+						$meta->setAttribute($key, $value);
+					}
+				}
+
+				$item->appendChild($meta);
+			}
+
+			$wrapper->appendChild($item);
+		}
 
 		public function prepareTableValue($data, XMLElement $link = null, $entry_id = null)
 		{
