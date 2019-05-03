@@ -74,10 +74,7 @@
 			return General::in_iarray($type, self::$svgMimeTypes);
 		}
 
-		/**
-		 * Adds support for svg
-		 */
-		public static function getMetaInfo($file, $type)
+		public static function getMetaInfo($file, $type, $extra = null)
 		{
 			$metas = parent::getMetaInfo($file, $type);
 			if (self::isSvg($type)) {
@@ -110,6 +107,14 @@
 							}
 						}
 					}
+				}
+			}
+
+			if (!empty($extra)) {
+				$extra = json_decode($extra, true);
+
+				if (is_array($extra) && !empty($extra)) {
+					$metas = array_merge($metas, $extra);
 				}
 			}
 			return $metas;
@@ -399,7 +404,7 @@
 			}
 
 			// run basic upload check
-			$error = parent::checkPostFieldData($data, $message, $entry_id);
+			$error = parent::checkPostFieldData($data['image'], $message, $entry_id);
 
 			// test for minimum dimensions
 			if ($error == self::__OK__) {
@@ -417,7 +422,7 @@
 					}
 				}
 
-				$meta = static::getMetaInfo($tmp_name, $type);
+				$meta = static::getMetaInfo($tmp_name, $type, $data['meta']);
 
 				// If we found some dimensions
 				if (isset($meta['width']) && isset($meta['height'])) {
@@ -479,27 +484,27 @@
 
 		public function processRawFieldData($data, &$status, &$message = null, $simulate = false, $entry_id = null)
 		{
-			if (!is_array($data) && !is_string($data)) {
-				return parent::processRawFieldData($data, $status, $message, $simulate, $entry_id);
+			if (!is_array($data['image']) && !is_string($data['image'])) {
+				return parent::processRawFieldData($data['image'], $status, $message, $simulate, $entry_id);
 			}
 
-			if (is_array($data) && isset($data['name']) && ($this->get('unique') == 'yes')) {
-				$data['name'] = $this->getUniqueFilename($data['name']);
+			if (is_array($data['image']) && isset($data['image']['name']) && ($this->get('unique') == 'yes')) {
+				$data['image']['name'] = $this->getUniqueFilename($data['image']['name']);
 			}
 
 			$max_width  = $this->get('max_width');
 			$max_height = $this->get('max_height');
 
 			// file already exists in Symphony
-			if (is_string($data)) {
+			if (is_string($data['image'])) {
 
 				// 1. process Upload
-				$result = parent::processRawFieldData($data, $status, $message, $simulate, $entry_id);
+				$result = parent::processRawFieldData($data['image'], $status, $message, $simulate, $entry_id);
 
 				// Find Mime if it was not submitted
 				if ($result['mimetype'] === 'application/octet-stream') {
 					if (function_exists('finfo_file')) {
-						$result['mimetype'] = finfo_file(finfo_open(FILEINFO_MIME_TYPE), $data['name']);
+						$result['mimetype'] = finfo_file(finfo_open(FILEINFO_MIME_TYPE), $data['image']['name']);
 					}
 				}
 
@@ -510,30 +515,31 @@
 
 					if ((!empty($max_width) && ($max_width > 0)) || (!empty($max_height) && ($max_height > 0))) {
 						if (is_file($file = WORKSPACE.$result['file'])) {
-							$dimensions = $this->figureDimensions(static::getMetaInfo($file, $result['mimetype']));
+							$dimensions = $this->figureDimensions(static::getMetaInfo($file, $result['mimetype'], $data['meta']));
 							if ($dimensions['proceed']) {
 								if (self::resize($file, $dimensions['width'], $dimensions['height'], $result['mimetype'])) {
 									$result['size'] = filesize($file);
-									$result['meta'] = serialize(static::getMetaInfo($file, $result['mimetype']));
 								}
 							}
 						}
 					}
 				}
+
+				$result['meta'] = serialize(static::getMetaInfo($file, $result['mimetype'], $data['meta']));
 			}
 
 			// new file in Symphony
-			else if (is_array($data)) {
+			else if (is_array($data['image'])) {
 
 				// 1. resize
 				if ($this->isResizeActive() && !static::isSvg($result['mimetype'])) {
 
 					if ((!empty($max_width) && ($max_width > 0)) || (!empty($max_height) && ($max_height > 0))) {
-						if (is_file($file = $data['tmp_name'])) {
-							$dimensions = $this->figureDimensions(static::getMetaInfo($file, $data['type']));
+						if (is_file($file = $data['image']['tmp_name'])) {
+							$dimensions = $this->figureDimensions(static::getMetaInfo($file, $data['image']['type'], $data['meta']));
 							if ($dimensions['proceed']) {
-								if (self::resize($file, $dimensions['width'], $dimensions['height'], $data['type'])) {
-									$data['size'] = filesize($file);
+								if (self::resize($file, $dimensions['width'], $dimensions['height'], $data['image']['type'])) {
+									$data['image']['size'] = filesize($file);
 								}
 							}
 						}
@@ -541,7 +547,8 @@
 				}
 
 				// 2. process Upload
-				$result = parent::processRawFieldData($data, $status, $message, $simulate, $entry_id);
+				$result = parent::processRawFieldData($data['image'], $status, $message, $simulate, $entry_id);
+				$result['meta'] = serialize(static::getMetaInfo($file, $data['image']['type'], $data['meta']));
 			}
 
 			return $result;
@@ -549,17 +556,61 @@
 
 		public function displayPublishPanel(XMLElement &$wrapper, $data = null, $flagWithError = null, $fieldnamePrefix = null, $fieldnamePostfix = null, $entry_id = null)
 		{
-			// Let the upload field do it's job
-			parent::displayPublishPanel($wrapper, $data, $flagWithError, $fieldnamePrefix, $fieldnamePostfix, $entry_id);
-
-			$label = $this->getChildrenWithClass($wrapper, 'file', 'label');
-			if ($label != null) {
-				// try to find the i element
-				$i = $this->getChildrenWithClass($wrapper, null, 'i');
-				if ($i != null) {
-					$i->setValue(' '.$this->generateHelpMessage());
-				}
+			if (is_dir(DOCROOT . $this->get('destination') . '/') === false) {
+				$flagWithError = __('The destination directory, %s, does not exist.', array(
+					'<code>' . $this->get('destination') . '</code>'
+				));
+			} elseif ($flagWithError && is_writable(DOCROOT . $this->get('destination') . '/') === false) {
+				$flagWithError = __('Destination folder is not writable.')
+					. ' '
+					. __('Please check permissions on %s.', array(
+						'<code>' . $this->get('destination') . '</code>'
+					));
 			}
+
+			$label = Widget::Label($this->get('label'));
+			$label->setAttribute('class', 'file image-upload-label');
+
+			if ($this->get('required') !== 'yes') {
+				$label->appendChild(new XMLElement('i', __('Optional') . ' ' . $this->generateHelpMessage()));
+			} else {
+				$label->appendChild(new XMLElement('i', $this->generateHelpMessage()));
+			}
+
+			if (isset($data['file'])) {
+				$filename = $this->get('destination') . '/' . basename($data['file']);
+				$file = $this->getFilePath($data['file']);
+				if (file_exists($file) === false || !is_readable($file)) {
+					$flagWithError = __('The file uploaded is no longer available. Please check that it exists, and is readable.');
+				}
+			} else {
+				$filename = null;
+			}
+
+			$meta = unserialize($data['meta']);
+			unset($meta['creation']);
+			unset($meta['width']);
+			unset($meta['height']);
+
+			if (empty($meta)) {
+				$meta = '{}';
+			} else {
+				$meta = json_encode($meta);
+			}
+
+			$label->appendChild(Widget::Input('fields'.$fieldnamePrefix.'['.$this->get('element_name').'][image]'.$fieldnamePostfix, $filename, ($filename ? 'hidden' : 'file'), array('class' => 'image-upload-input')));
+			$label->appendChild(Widget::Input('fields'.$fieldnamePrefix.'['.$this->get('element_name').'][meta]'.$fieldnamePostfix, $meta, 'hidden', array('class' => 'image-upload-meta')));
+			
+			if ($flagWithError != null) {
+				$wrapper->appendChild(Widget::Error($label, $flagWithError));
+			} else {
+				$wrapper->appendChild($label);
+			}
+
+			$wrapper->appendChild(new XMLElement('button', __('Remove'), array('class' => 'image-upload-remove')));
+			$wrapper->setAttribute('data-editor', ($this->get('editor') === 'yes' && !self::isSvg($data['mimetype'])) ? 'yes' : 'no');
+			$wrapper->setAttribute('data-viewport-width', $this->get('viewport_width'));
+			$wrapper->setAttribute('data-viewport-height', $this->get('viewport_height'));
 		}
 
 		protected function generateHelpMessage()

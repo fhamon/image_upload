@@ -7,6 +7,32 @@
 
 	class extension_image_upload extends Extension
 	{
+
+		public function getSubscribedDelegates()
+		{
+			return array(
+				array(
+					'page' => '/backend/',
+					'delegate' => 'InitaliseAdminPageHead',
+					'callback' => 'initaliseAdminPageHead'
+				)
+			);
+		}
+
+		public function initaliseAdminPageHead($context)
+		{
+			$page_callback = Administration::instance()->getPageCallback();
+			$page_callback = $page_callback['context'];
+
+			if (isset($page_callback['section_handle']) && ($page_callback['page'] == 'edit' || $page_callback['page'] == 'new')) {
+				Administration::instance()->Page->addScriptToHead(URL . '/extensions/image_upload/assets/js/lib/croppr.min.js');
+				Administration::instance()->Page->addStylesheetToHead(URL . '/extensions/image_upload/assets/css/lib/croppr.min.css');
+
+				Administration::instance()->Page->addScriptToHead(URL . '/extensions/image_upload/assets/js/publish.image_upload.js');
+				Administration::instance()->Page->addStylesheetToHead(URL . '/extensions/image_upload/assets/css/publish.image_upload.css');
+			}
+		}
+
 		/*------------------------------------------------------------------------------------------------*/
 		/*  Installation  */
 		/*------------------------------------------------------------------------------------------------*/
