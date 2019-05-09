@@ -379,7 +379,7 @@
 			$settings['field_id']        = $id;
 			$settings['destination']     = $this->get('destination');
 			$settings['validator']       = ($settings['validator'] == 'custom' ? null : $this->get('validator'));
-			$settings['unique']          = $this->get('unique');
+			$settings['unique']          = $this->get('unique') == 'yes' ? 'yes' : 'no';
 			$settings['min_width']       = (int)$this->get('min_width');
 			$settings['min_height']      = (int)$this->get('min_height');
 			$settings['max_width']       = (int)$this->get('max_width');
@@ -573,10 +573,12 @@
 			$label->setAttribute('class', 'file image-upload-label');
 
 			if ($this->get('required') !== 'yes') {
-				$label->appendChild(new XMLElement('i', __('Optional') . ' ' . $this->generateHelpMessage()));
+				$label->appendChild(new XMLElement('i', $this->generateHelpMessage()));
 			} else {
 				$label->appendChild(new XMLElement('i', $this->generateHelpMessage()));
 			}
+
+			$filename = null;
 
 			if (isset($data['file'])) {
 				$filename = $this->get('destination') . '/' . basename($data['file']);
@@ -584,8 +586,6 @@
 				if (file_exists($file) === false || !is_readable($file)) {
 					$flagWithError = __('The file uploaded is no longer available. Please check that it exists, and is readable.');
 				}
-			} else {
-				$filename = null;
 			}
 
 			$meta = unserialize($data['meta']);

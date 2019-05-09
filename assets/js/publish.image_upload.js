@@ -8,13 +8,25 @@
 	'use strict';
 
 	var sels = {
-		field: '.field-image_upload',
+		field: '.field-image_upload, .field-multilingual_image_upload .tab-panel',
 		editor: '.image-upload-editor',
 		input: '.image-upload-input',
 		meta: '.image-upload-meta',
 		remove: '.image-upload-remove',
 		imageCtn: '.image-ctn',
-		label: '.image-upload-label'
+		label: '.image-upload-label',
+		tab: '.tab-panel',
+		tabBtn: '.tabs li'
+	};
+
+	var refresh = function (field, instance) {
+		var meta = field.find(sels.meta);
+		var editor = field.find(sels.editor);
+		var savedMeta = JSON.parse(meta.attr('value') || '{}');
+		if (!!savedMeta.crop) {
+			instance.moveTo(~~(editor.outerWidth() * savedMeta.crop.x), ~~(editor.outerHeight() * savedMeta.crop.y));
+			instance.resizeTo(~~(editor.outerWidth() * savedMeta.crop.width), ~~(editor.outerHeight() * savedMeta.crop.height), [0,0]);
+		}
 	};
 
 	var initEditor = function (field) {
@@ -29,14 +41,15 @@
 
 		var config = {
 			onCropEnd: function (value) {
+				if (!value.width) {
+					return;
+				}
+
 				savedMeta = JSON.parse(meta.attr('value') || '{}');
 				meta.val(JSON.stringify(Object.assign({}, savedMeta, {crop: value})));
 			},
 			onInitialize: function (instance) {
-				if (!!savedMeta.crop) {
-					instance.moveTo(~~(editor.outerWidth() * savedMeta.crop.x), ~~(editor.outerHeight() * savedMeta.crop.y));
-					instance.resizeTo(~~(editor.outerWidth() * savedMeta.crop.width), ~~(editor.outerHeight() * savedMeta.crop.height), [0,0]);
-				}
+				refresh(field, instance);
 			},
 			returnMode: 'ratio'
 		};
@@ -46,11 +59,20 @@
 			field.addClass('is-forced-ratio');
 		}
 
-		var croppr = new window.Croppr('#' + field.attr('id') + ' ' + sels.editor + ' img', config);
+		if (!editor.data('croppr')) {
+			var croppr = new window.Croppr('#' + field.attr('id') + ' ' + sels.editor + ' img', config);
+			editor.data('croppr', croppr);
+		}
 	};
 
 	var addEditorDom = function (field, src) {
-		var label = field.find(sels.label);
+		var ctn = field.find(sels.label);
+
+		// For multilingual support
+		if (!ctn.length && !!field.is('.tab-panel')) {
+			ctn = field;
+		}
+
 		var editor = $('<div />').attr({
 			class: sels.editor.replace('.', '') + sels.imageCtn.replace('.', ' ')
 		});
@@ -59,7 +81,7 @@
 			src: src
 		}));
 
-		label.append(editor);
+		ctn.append(editor);
 		editor.outerWidth();
 	};
 
@@ -146,9 +168,20 @@
 		}
 	};
 
+	var onTabChange = function () {
+		var t = $(this);
+		var editor = t.find(sels.editor);
+		editor.outerHeight();
+
+		if (!!editor.length && !!editor.data('croppr')) {
+			refresh(t, editor.data('croppr'));
+		}
+	};
+
 	var init = function () {
 		S.Elements.contents.find(sels.field).each(initOne);
 		S.Elements.contents.find(sels.remove).on('click', onRemoveClick);
+		S.Elements.contents.find(sels.tab).on('visible.tab', onTabChange);
 		S.Elements.contents.find(sels.field).on('change', sels.input, onInputChange);
 		S.Elements.contents.find(sels.label).on('click', function (event) {
 			if (!$(event.target).is('input')) {
