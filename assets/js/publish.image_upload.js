@@ -24,8 +24,12 @@
 		var editor = field.find(sels.editor);
 		var savedMeta = JSON.parse(meta.attr('value') || '{}');
 		if (!!savedMeta.crop) {
-			instance.moveTo(~~(editor.outerWidth() * savedMeta.crop.x), ~~(editor.outerHeight() * savedMeta.crop.y));
-			instance.resizeTo(~~(editor.outerWidth() * savedMeta.crop.width), ~~(editor.outerHeight() * savedMeta.crop.height), [0,0]);
+			try {
+				instance.moveTo(~~(editor.outerWidth() * savedMeta.crop.x), ~~(editor.outerHeight() * savedMeta.crop.y));
+				instance.resizeTo(~~(editor.outerWidth() * savedMeta.crop.width), ~~(editor.outerHeight() * savedMeta.crop.height), [0,0]);
+			} catch (error) {
+				
+			}
 		}
 	};
 
