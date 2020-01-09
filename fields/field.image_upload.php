@@ -599,16 +599,21 @@
 				$meta = json_encode($meta);
 			}
 
-			$label->appendChild(Widget::Input('fields'.$fieldnamePrefix.'['.$this->get('element_name').'][image]'.$fieldnamePostfix, $filename, ($filename ? 'hidden' : 'file'), array('class' => 'image-upload-input')));
-			$label->appendChild(Widget::Input('fields'.$fieldnamePrefix.'['.$this->get('element_name').'][meta]'.$fieldnamePostfix, $meta, 'hidden', array('class' => 'image-upload-meta')));
+			$ctn = new XMLElement('div', null, array('class' => 'image-upload-ctn'));
+
+			$ctn->appendChild(new XMLElement('em', __('Remove'), array('class' => 'image-upload-remove')));
+
+			$ctn->appendChild(Widget::Input('fields'.$fieldnamePrefix.'['.$this->get('element_name').'][image]'.$fieldnamePostfix, $filename, ($filename ? 'hidden' : 'file'), array('class' => 'image-upload-input')));
+			$ctn->appendChild(Widget::Input('fields'.$fieldnamePrefix.'['.$this->get('element_name').'][meta]'.$fieldnamePostfix, $meta, 'hidden', array('class' => 'image-upload-meta')));
 			
+			$label->appendChild($ctn);
+
 			if ($flagWithError != null) {
 				$wrapper->appendChild(Widget::Error($label, $flagWithError));
 			} else {
 				$wrapper->appendChild($label);
 			}
 
-			$wrapper->appendChild(new XMLElement('button', __('Remove'), array('class' => 'image-upload-remove')));
 			$wrapper->setAttribute('data-editor', ($this->get('editor') === 'yes' && !self::isSvg($data['mimetype'])) ? 'yes' : 'no');
 			$wrapper->setAttribute('data-viewport-width', $this->get('viewport_width'));
 			$wrapper->setAttribute('data-viewport-height', $this->get('viewport_height'));

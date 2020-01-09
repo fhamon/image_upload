@@ -9,6 +9,7 @@
 
 	var sels = {
 		field: '.field-image_upload, .field-multilingual_image_upload .tab-panel',
+		ctn: '.image-upload-ctn',
 		editor: '.image-upload-editor',
 		input: '.image-upload-input',
 		meta: '.image-upload-meta',
@@ -70,7 +71,7 @@
 	};
 
 	var addEditorDom = function (field, src) {
-		var ctn = field.find(sels.label);
+		var ctn = field.find(sels.ctn);
 
 		// For multilingual support
 		if (!ctn.length && !!field.is('.tab-panel')) {
