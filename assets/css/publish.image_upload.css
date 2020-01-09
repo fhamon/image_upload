@@ -16,7 +16,7 @@
 	color: #2f77eb !important;
 }
 
-.field-image_upload .image-upload-ctn {
+.field-image_upload .image-upload-ctn, .field-multilingual_image_upload .image-upload-ctn {
 	border: 1px solid #d3dce2;
 	background: #f4f8fb;
 	padding: 1.5rem;
