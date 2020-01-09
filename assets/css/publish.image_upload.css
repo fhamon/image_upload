@@ -23,6 +23,7 @@
 	box-sizing: border-box;
 	border-radius: 5px;
 	text-align: center;
+	margin-top: 1rem;
 }
 
 .field-image_upload .image-upload-editor img, .field-multilingual_image_upload .image-upload-editor img {

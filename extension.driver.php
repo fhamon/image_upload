@@ -129,6 +129,47 @@
 				}
 			}
 
+			// Before 2.0 (todo test this)
+			if ($ret && version_compare($previousVersion, '2.0', '<')) {
+				Symphony::Database()
+					->alter('tbl_authors')
+					->add([
+						'viewport_width' => 'int(11)',
+						'viewport_height' => 'int(11)',
+						'editor' => [
+							'type' => 'enum',
+							'values' => ['yes','no'],
+							'default' => 'no'
+						],
+					])
+					->after('resize')
+					->execute()
+					->success();
+
+				// Change meta data type
+				$upload_tables = Symphony::Database()
+					->select(['field_id'])
+					->from('tbl_fields_image_upload')
+					->execute()
+					->column('field_id');
+
+				if (is_array($upload_tables) && !empty($upload_tables)) {
+					foreach($upload_tables as $field) {
+						Symphony::Database()
+							->alter("tbl_entries_data_$field")
+							->change('meta', array(
+								'meta' => [
+									'type' => 'text',
+									'null' => true,
+								]
+							))
+							->after('user_type')
+							->execute()
+							->success();
+					}
+				}
+			}
+
 			return $ret;
 		}
 
